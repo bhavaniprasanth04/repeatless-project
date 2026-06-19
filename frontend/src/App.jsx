@@ -5,7 +5,7 @@ import ChatPane from './components/ChatPane';
 import api from './utils/api';
 import axios from 'axios';
 
-import { Mail, Calendar, Sparkles, X, Send, Loader2 } from 'lucide-react';
+import { Mail, Calendar, Sparkles, X, Send, Loader2, CornerUpLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function App() {
   const [authStatus, setAuthStatus] = useState({
@@ -370,9 +370,10 @@ export default function App() {
                         </span>
                         <button
                           onClick={() => handleOpenReply(msg)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-brand-600 transition-all shadow-sm active:scale-95 ml-2"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-brand-600 hover:text-brand-500 hover:border-slate-350 transition-all shadow-sm active:scale-95 ml-2"
                         >
-                          ↩️ AI Reply
+                          <CornerUpLeft className="h-3.5 w-3.5" />
+                          AI Reply
                         </button>
                       </div>
                     </div>
@@ -402,7 +403,7 @@ export default function App() {
       {/* AI Compose Modal */}
       {isComposeOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-scale-up">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
@@ -481,7 +482,7 @@ export default function App() {
       {/* AI Reply Modal */}
       {isReplyOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-scale-up">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-2">
@@ -544,14 +545,21 @@ export default function App() {
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Centered Notification Alert */}
       {notification && (
-        <div className={`fixed bottom-5 right-5 z-[100] px-4 py-3 rounded-xl border text-sm font-semibold shadow-lg animate-fade-in flex items-center gap-2 ${
-          notification.type === 'success' 
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-emerald-500/5' 
-            : 'bg-rose-50 text-rose-800 border-rose-200 shadow-rose-500/5'
-        }`}>
-          <span>{notification.text}</span>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none animate-fade-in">
+          <div className={`pointer-events-auto px-6 py-4 rounded-2xl border text-sm font-bold shadow-2xl flex items-center gap-3 max-w-md bg-white animate-scale-up ${
+            notification.type === 'success' 
+              ? 'text-emerald-800 border-emerald-250 shadow-emerald-500/10' 
+              : 'text-rose-800 border-rose-250 shadow-rose-500/10'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+            )}
+            <span>{notification.text}</span>
+          </div>
         </div>
       )}
     </div>
