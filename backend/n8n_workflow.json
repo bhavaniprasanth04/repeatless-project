@@ -1,0 +1,255 @@
+{
+  "name": "Repeatless Gmail Ingestion Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sync-email",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-node-id",
+      "name": "Webhook Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_FILE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Synced Emails",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email ID": "={{ $json.id }}",
+            "Thread ID": "={{ $json.threadId }}",
+            "Sender": "={{ $json.sender }}",
+            "Recipient": "={{ $json.recipient }}",
+            "Subject": "={{ $json.subject }}",
+            "Date": "={{ $json.date }}",
+            "Word Count": "={{ $json.wordCount }}",
+            "Sanitized Body": "={{ $json.sanitizedBody }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "google-sheets-node-id",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.1,
+      "position": [450, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-oauth-credentials-id"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.nvidia.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "apiKey",
+        "sendHeaders": true,
+        "headersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": [\"{{ $json.sanitizedBody }}\"],\n  \"model\": \"nvidia/embed-qa-4\",\n  \"encoding_format\": \"float\"\n}",
+        "options": {}
+      },
+      "id": "nvidia-nim-embedding-node-id",
+      "name": "NVIDIA NIM Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300],
+      "credentials": {
+        "apiKey": {
+          "id": "nvidia-nim-api-key-credentials-id"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-pro",
+        "prompt": "=Analyze this email and output a clean JSON object with two fields:\n1. \"summary\": An executive 1-sentence summary of the main action required or point of the email.\n2. \"category\": Classify the email into one of these: \"Work\", \"Finance\", or \"Newsletter\".\n\nSubject: {{ $node[\"Log to Google Sheets\"].json.subject }}\nSender: {{ $node[\"Log to Google Sheets\"].json.sender }}\nBody: {{ $node[\"Log to Google Sheets\"].json.sanitizedBody }}\n\nReturn JSON only.",
+        "options": {
+          "responseMimeType": "application/json"
+        }
+      },
+      "id": "gemini-ai-analysis-node-id",
+      "name": "Gemini AI Summary",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "google-gemini-credentials-id"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "name"
+        },
+        "table": {
+          "__rl": true,
+          "value": "threads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $node[\"Log to Google Sheets\"].json.threadId }}",
+            "subject": "={{ $node[\"Log to Google Sheets\"].json.subject }}",
+            "sender": "={{ $node[\"Log to Google Sheets\"].json.sender }}",
+            "date": "={{ $node[\"Log to Google Sheets\"].json.date }}",
+            "snippet": "={{ $node[\"Log to Google Sheets\"].json.snippet }}",
+            "category": "={{ JSON.parse($json.text).category }}",
+            "summary": "={{ JSON.parse($json.text).summary }}"
+          },
+          "matchingColumns": [
+            "id"
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-upsert-thread-node-id",
+      "name": "Supabase Upsert Thread",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials-id"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "name"
+        },
+        "table": {
+          "__rl": true,
+          "value": "emails",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $node[\"Log to Google Sheets\"].json.id }}",
+            "thread_id": "={{ $node[\"Log to Google Sheets\"].json.threadId }}",
+            "sender": "={{ $node[\"Log to Google Sheets\"].json.sender }}",
+            "recipient": "={{ $node[\"Log to Google Sheets\"].json.recipient }}",
+            "subject": "={{ $node[\"Log to Google Sheets\"].json.subject }}",
+            "date": "={{ $node[\"Log to Google Sheets\"].json.date }}",
+            "snippet": "={{ $node[\"Log to Google Sheets\"].json.snippet }}",
+            "body": "={{ $node[\"Log to Google Sheets\"].json.body }}",
+            "sanitized_body": "={{ $node[\"Log to Google Sheets\"].json.sanitizedBody }}",
+            "word_count": "={{ $node[\"Log to Google Sheets\"].json.wordCount }}",
+            "tech_stack_tally": "={{ JSON.stringify($node[\"Log to Google Sheets\"].json.techStackTally) }}",
+            "pipeline_version": "={{ $node[\"Log to Google Sheets\"].json.pipelineVersion }}",
+            "embedding": "={{ JSON.stringify($node[\"NVIDIA NIM Embedding\"].json.data[0].embedding) }}"
+          },
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "id": "supabase-insert-email-node-id",
+      "name": "Supabase Insert Email",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials-id"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "NVIDIA NIM Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NVIDIA NIM Embedding": {
+      "main": [
+        [
+          {
+            "node": "Gemini AI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini AI Summary": {
+      "main": [
+        [
+          {
+            "node": "Supabase Upsert Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Upsert Thread": {
+      "main": [
+        [
+          {
+            "node": "Supabase Insert Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
