@@ -1,6 +1,6 @@
 // Auth Controller - Configured for dedicated single user dashboard
 const activeUser = {
-  email: 'bhavaniprasanth04@gmail.com',
+  email: 'anupojubhavani9849@gmail.com',
   name: 'Bhavani Prasanth',
   avatar: null
 };

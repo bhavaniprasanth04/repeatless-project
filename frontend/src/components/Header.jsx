@@ -37,7 +37,7 @@ export default function Header({ authStatus, onConnectGoogle, onLogout, onToggle
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold text-slate-800 leading-tight">{authStatus.user?.name || 'Bhavani Prasanth'}</p>
-                <p className="text-[10px] text-slate-505 leading-none mt-0.5">{authStatus.user?.email || 'bhavaniprasanth04@gmail.com'}</p>
+                <p className="text-[10px] text-slate-505 leading-none mt-0.5">{authStatus.user?.email || 'anupojubhavani9849@gmail.com'}</p>
               </div>
             </div>
 

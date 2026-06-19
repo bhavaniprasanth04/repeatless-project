@@ -12,7 +12,7 @@ export default function App() {
   const [authStatus, setAuthStatus] = useState({
     authenticated: true,
     user: {
-      email: 'bhavaniprasanth04@gmail.com',
+      email: 'anupojubhavani9849@gmail.com',
       name: 'Bhavani Prasanth',
       avatar: null
     }
@@ -89,20 +89,19 @@ export default function App() {
   };
 
   const handleConnectGoogle = async () => {
+    const message = "This is a customized tool for one official Gmail account. If you need to connect a different account, please contact the developer.\n\nClick OK to connect with: anupojubhavani9849@gmail.com";
+    if (!window.confirm(message)) {
+      return;
+    }
     try {
       const res = await api.get('/auth/google');
-      // In production we would redirect:
-      // window.location.href = res.data.url;
-      // In our mockup sandboxed environment, we'll hit status directly to log in:
-      alert(res.data.message + '\n(Simulating login success...)');
-      // Perform mock login
-      const callbackRes = await api.get('/auth/status');
+      // Set auth status to the customized official user
       setAuthStatus({
         authenticated: true,
         user: {
-          email: 'user@example.com',
-          name: 'Jane Doe',
-          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'
+          email: 'anupojubhavani9849@gmail.com',
+          name: 'Bhavani Prasanth',
+          avatar: null
         }
       });
       // Fetch threads immediately
