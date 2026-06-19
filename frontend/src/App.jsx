@@ -228,16 +228,11 @@ export default function App() {
     if (!composeTo || !composePrompt || isSendingCompose) return;
     setIsSendingCompose(true);
 
-    const composeWebhookUrl = import.meta.env.VITE_N8N_COMPOSE_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/compose';
-
     try {
-      await axios.post(composeWebhookUrl, {
+      await api.post('/emails/compose', {
         to: composeTo,
         prompt: composePrompt
       }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
         timeout: 30000
       });
 
@@ -259,16 +254,11 @@ export default function App() {
     if (!replyMessageId || !replyPrompt || isSendingReply) return;
     setIsSendingReply(true);
 
-    const replyWebhookUrl = import.meta.env.VITE_N8N_REPLY_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/reply';
-
     try {
-      await axios.post(replyWebhookUrl, {
+      await api.post('/emails/reply', {
         messageId: replyMessageId,
         prompt: replyPrompt
       }, {
-        headers: {
-          'Content-Type': 'application/json'
-        },
         timeout: 30000
       });
 

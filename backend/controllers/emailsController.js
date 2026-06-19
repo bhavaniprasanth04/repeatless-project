@@ -126,3 +126,80 @@ exports.getStats = async (req, res) => {
     });
   }
 };
+
+/**
+ * Proxy compose request to n8n webhook
+ * POST /api/emails/compose
+ */
+exports.handleCompose = async (req, res) => {
+  const { to, prompt } = req.body;
+
+  if (!to || !prompt) {
+    return res.status(400).json({ error: 'Recipient email and prompt are required' });
+  }
+
+  try {
+    const webhookUrl = process.env.N8N_COMPOSE_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/email-compose';
+    console.log('[Emails Proxy] Forwarding compose query to n8n...');
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ to, prompt })
+    });
+
+    if (!response.ok) {
+      throw new Error(`n8n compose webhook returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('[Compose Proxy Error]:', error.message);
+    return res.status(502).json({
+      error: 'Failed to communicate with n8n compose webhook',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Proxy reply request to n8n webhook
+ * POST /api/emails/reply
+ */
+exports.handleReply = async (req, res) => {
+  const { messageId, prompt } = req.body;
+
+  if (!messageId || !prompt) {
+    return res.status(400).json({ error: 'Message ID and prompt are required' });
+  }
+
+  try {
+    const webhookUrl = process.env.N8N_REPLY_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/email-reply';
+    console.log('[Emails Proxy] Forwarding reply query to n8n...');
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messageId, prompt })
+    });
+
+    if (!response.ok) {
+      throw new Error(`n8n reply webhook returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('[Reply Proxy Error]:', error.message);
+    return res.status(502).json({
+      error: 'Failed to communicate with n8n reply webhook',
+      message: error.message
+    });
+  }
+};
+
