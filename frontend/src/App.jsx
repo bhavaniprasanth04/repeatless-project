@@ -5,7 +5,7 @@ import ChatPane from './components/ChatPane';
 import api from './utils/api';
 import axios from 'axios';
 
-import { Mail, Calendar, Sparkles, X } from 'lucide-react';
+import { Mail, Calendar, Sparkles, X, Send, Loader2 } from 'lucide-react';
 
 export default function App() {
   const [authStatus, setAuthStatus] = useState({
@@ -23,6 +23,21 @@ export default function App() {
   
   const [messages, setMessages] = useState([]);
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
+
+  // Compose modal states
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [composeTo, setComposeTo] = useState('');
+  const [composePrompt, setComposePrompt] = useState('');
+  const [isSendingCompose, setIsSendingCompose] = useState(false);
+
+  // Reply modal states
+  const [isReplyOpen, setIsReplyOpen] = useState(false);
+  const [replyMessageId, setReplyMessageId] = useState('');
+  const [replyPrompt, setReplyPrompt] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+
+  // Toast notification states
+  const [notification, setNotification] = useState(null);
 
   // Check auth status on load and if redirected from callback
   useEffect(() => {
@@ -47,6 +62,16 @@ export default function App() {
     
     checkAuth();
   }, []);
+
+  // Auto-dismiss notification toast
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const fetchEmails = async () => {
     try {
@@ -186,6 +211,80 @@ export default function App() {
     }
   };
 
+  const handleOpenCompose = () => {
+    setComposeTo('');
+    setComposePrompt('');
+    setIsComposeOpen(true);
+  };
+
+  const handleOpenReply = (email) => {
+    setReplyMessageId(email.id);
+    setReplyPrompt('');
+    setIsReplyOpen(true);
+  };
+
+  const handleSendCompose = async (e) => {
+    e.preventDefault();
+    if (!composeTo || !composePrompt || isSendingCompose) return;
+    setIsSendingCompose(true);
+
+    const composeWebhookUrl = import.meta.env.VITE_N8N_COMPOSE_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/compose';
+
+    try {
+      await axios.post(composeWebhookUrl, {
+        to: composeTo,
+        prompt: composePrompt
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      });
+
+      setIsComposeOpen(false);
+      setNotification({ type: 'success', text: 'Email successfully composed and sent by AI!' });
+    } catch (err) {
+      console.error('Compose error:', err);
+      setNotification({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to send composed email.' 
+      });
+    } finally {
+      setIsSendingCompose(false);
+    }
+  };
+
+  const handleSendReply = async (e) => {
+    e.preventDefault();
+    if (!replyMessageId || !replyPrompt || isSendingReply) return;
+    setIsSendingReply(true);
+
+    const replyWebhookUrl = import.meta.env.VITE_N8N_REPLY_WEBHOOK_URL || 'https://primary-production-a4edd.up.railway.app/webhook/reply';
+
+    try {
+      await axios.post(replyWebhookUrl, {
+        messageId: replyMessageId,
+        prompt: replyPrompt
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      });
+
+      setIsReplyOpen(false);
+      setNotification({ type: 'success', text: 'AI reply successfully generated and sent!' });
+    } catch (err) {
+      console.error('Reply error:', err);
+      setNotification({ 
+        type: 'error', 
+        text: err.response?.data?.message || err.message || 'Failed to send email reply.' 
+      });
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Interactive Global Header */}
@@ -208,6 +307,7 @@ export default function App() {
             onSync={handleSyncEmails}
             isSyncing={isSyncing}
             isAuthenticated={authStatus.authenticated}
+            onComposeClick={handleOpenCompose}
           />
         </section>
 
@@ -224,21 +324,21 @@ export default function App() {
 
       {/* Thread details Modal Popup */}
       {selectedThread && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 flex justify-between items-start">
+            <div className="p-5 border-b border-slate-150 flex justify-between items-start bg-slate-50/50">
               <div>
-                <span className="text-[10px] font-bold font-mono text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20 uppercase tracking-wider">
-                  {selectedThread.category} Thread Details
+                <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-2.5 py-0.5 rounded-lg border border-brand-100 uppercase tracking-wider">
+                  {selectedThread.category} Thread
                 </span>
-                <h3 className="font-display font-semibold text-lg text-slate-100 mt-2 leading-snug">
+                <h3 className="font-display font-extrabold text-lg text-slate-900 mt-2 leading-snug">
                   {selectedThread.subject}
                 </h3>
               </div>
               <button 
                 onClick={() => setSelectedThread(null)}
-                className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all"
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-xl transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -247,13 +347,13 @@ export default function App() {
             {/* Modal Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* AI summary block inside thread */}
-              <div className="bg-brand-500/[0.03] border border-brand-500/20 rounded-xl p-4 flex items-start gap-3">
-                <Sparkles className="h-5 w-5 text-brand-400 shrink-0 mt-0.5" />
+              <div className="bg-brand-50/40 border border-brand-100 rounded-2xl p-4 flex items-start gap-3">
+                <Sparkles className="h-5 w-5 text-brand-500 shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="text-xs font-bold font-mono tracking-wider text-brand-300 uppercase leading-none mb-1.5">
-                    Gemini AI Summary
+                  <h4 className="text-xs font-extrabold tracking-wider text-brand-700 uppercase leading-none mb-1.5">
+                    AI Summary
                   </h4>
-                  <p className="text-sm text-slate-200 leading-relaxed font-sans">
+                  <p className="text-sm text-slate-700 leading-relaxed font-sans font-medium">
                     {selectedThread.summary}
                   </p>
                 </div>
@@ -261,26 +361,34 @@ export default function App() {
 
               {/* Message history under the thread */}
               <div className="space-y-4">
-                <h4 className="text-xs font-bold font-mono tracking-wider text-slate-500 uppercase">
+                <h4 className="text-xs font-extrabold tracking-wider text-slate-400 uppercase">
                   Messages ({selectedThread.messages.length})
                 </h4>
                 {selectedThread.messages.map((msg, i) => (
-                  <div key={i} className="bg-slate-950/40 border border-slate-850 rounded-xl p-4">
+                  <div key={i} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-sm">
                     {/* Message Header */}
-                    <div className="flex justify-between items-start border-b border-slate-900 pb-2.5 mb-3.5 text-xs">
+                    <div className="flex justify-between items-center border-b border-slate-200 pb-2.5 mb-3.5 text-xs">
                       <div>
-                        <span className="text-slate-400 font-bold block">{msg.sender}</span>
-                        <span className="text-[10px] text-slate-500 block font-mono mt-0.5">
-                          ID: {msg.headers['Message-ID']}
+                        <span className="text-slate-800 font-bold block">{msg.sender}</span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5 font-medium">
+                          ID: {msg.id}
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {new Date(msg.date).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-slate-400 font-bold">
+                          {new Date(msg.date).toLocaleString()}
+                        </span>
+                        <button
+                          onClick={() => handleOpenReply(msg)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 bg-white hover:bg-slate-50 text-brand-600 transition-all shadow-sm active:scale-95 ml-2"
+                        >
+                          ↩️ AI Reply
+                        </button>
+                      </div>
                     </div>
 
                     {/* Message content body */}
-                    <p className="text-xs text-slate-300 whitespace-pre-wrap font-mono leading-relaxed bg-slate-950/60 p-3 rounded-lg border border-slate-900">
+                    <p className="text-xs text-slate-750 whitespace-pre-wrap leading-relaxed bg-white p-4 rounded-xl border border-slate-200/60 shadow-inner">
                       {msg.body}
                     </p>
                   </div>
@@ -289,15 +397,171 @@ export default function App() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+            <div className="p-4 border-t border-slate-150 bg-slate-50/50 flex justify-end">
               <button 
                 onClick={() => setSelectedThread(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-semibold rounded-lg transition-all"
+                className="px-4.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 text-slate-750 text-xs font-bold rounded-xl transition-all shadow-sm"
               >
                 Close View
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* AI Compose Modal */}
+      {isComposeOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-brand-600" />
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Compose with AI</h3>
+              </div>
+              <button 
+                onClick={() => setIsComposeOpen(false)}
+                disabled={isSendingCompose}
+                className="p-1.5 text-slate-400 hover:text-slate-650 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSendCompose} className="p-5 space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">To (Email Address)</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="recipient@example.com"
+                  disabled={isSendingCompose}
+                  value={composeTo}
+                  onChange={(e) => setComposeTo(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-sm transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">AI Prompt</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Ask the AI to draft an email (e.g. Write a project status update to John...)"
+                  disabled={isSendingCompose}
+                  value={composePrompt}
+                  onChange={(e) => setComposePrompt(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-sm transition-all resize-none font-medium leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsComposeOpen(false)}
+                  disabled={isSendingCompose}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-750 text-xs font-bold rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingCompose}
+                  className="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-xs font-semibold rounded-xl shadow-md shadow-brand-500/10 transition-all flex items-center gap-2"
+                >
+                  {isSendingCompose ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      Generate & Send
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* AI Reply Modal */}
+      {isReplyOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-150 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-brand-600" />
+                <h3 className="font-display font-extrabold text-slate-800 text-base">Draft AI Reply</h3>
+              </div>
+              <button 
+                onClick={() => setIsReplyOpen(false)}
+                disabled={isSendingReply}
+                className="p-1.5 text-slate-400 hover:text-slate-655 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSendReply} className="p-5 space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">AI Reply Prompt</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Accept the invitation, thank them, and suggest Thursday at 2 PM as a backup..."
+                  disabled={isSendingReply}
+                  value={replyPrompt}
+                  onChange={(e) => setReplyPrompt(e.target.value)}
+                  className="w-full bg-white border border-slate-200 text-slate-800 text-sm rounded-xl px-4 py-2.5 placeholder:text-slate-450 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 shadow-sm transition-all resize-none font-medium leading-relaxed"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReplyOpen(false)}
+                  disabled={isSendingReply}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 text-xs font-semibold rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSendingReply}
+                  className="px-4 py-2.5 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white text-xs font-semibold rounded-xl shadow-md shadow-brand-500/10 transition-all flex items-center gap-2"
+                >
+                  {isSendingReply ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      Generate & Send Reply
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {notification && (
+        <div className={`fixed bottom-5 right-5 z-[100] px-4 py-3 rounded-xl border text-sm font-semibold shadow-lg animate-fade-in flex items-center gap-2 ${
+          notification.type === 'success' 
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-emerald-500/5' 
+            : 'bg-rose-50 text-rose-800 border-rose-200 shadow-rose-500/5'
+        }`}>
+          <span>{notification.text}</span>
         </div>
       )}
     </div>

@@ -7,7 +7,8 @@ export default function InboxPane({
   onSelectThread, 
   onSync, 
   isSyncing, 
-  isAuthenticated 
+  isAuthenticated,
+  onComposeClick
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -52,25 +53,37 @@ export default function InboxPane({
       <div className="p-4 border-b border-slate-200/80 flex items-center justify-between gap-4 bg-white/50">
         <div className="flex items-center gap-2">
           <h2 className="font-display font-extrabold text-lg text-slate-800">Inbox</h2>
-          <span className="bg-slate-100 border border-slate-200/60 px-2.5 py-0.5 text-xs font-bold rounded-full text-slate-650">
+          <span className="bg-slate-100 border border-slate-200/60 px-2.5 py-0.5 text-xs font-bold rounded-full text-slate-655">
             {filteredThreads.length}
           </span>
         </div>
         
-        {isAuthenticated && (
-          <button
-            onClick={onSync}
-            disabled={isSyncing}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all duration-200 active:scale-95 ${
-              isSyncing 
-                ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
-                : 'bg-white hover:bg-slate-50 text-brand-655 border-slate-200 shadow-sm hover:shadow hover:border-slate-300'
-            }`}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 text-brand-600 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Refreshing...' : 'Refresh Emails'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isAuthenticated && (
+            <>
+              <button
+                onClick={onComposeClick}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-brand-600 hover:bg-brand-500 text-white shadow-sm hover:shadow active:scale-95 border border-brand-500/20 transition-all duration-200"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Compose with AI
+              </button>
+              
+              <button
+                onClick={onSync}
+                disabled={isSyncing}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all duration-200 active:scale-95 ${
+                  isSyncing 
+                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                    : 'bg-white hover:bg-slate-50 text-brand-600 border-slate-200 shadow-sm hover:shadow hover:border-slate-300'
+                }`}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Filter and Search Bar */}
