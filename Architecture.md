@@ -34,6 +34,45 @@ graph TD
 3. **Data Storage & Sync**: When a sync is triggered, the Express backend proxies the sync request to n8n. n8n reads from the **Gmail API**, writes the raw message data, structures threads, generates embeddings, and saves everything directly to **Supabase**.
 4. **Conversational RAG Chat**: The client inputs a question. The query is converted into an embedding using NVIDIA NIM, and a cosine distance query executes against Supabase's `pgvector` index to pull the top $K$ relevant email contexts. The retrieved context and user prompt are passed to Google Gemini, which compiles a structured response complete with source citations.
 
+### 1.1. Core Automation Workflows (n8n Integration)
+
+To handle repetitive background tasks, conversational retrieval, and email drafting actions, the platform implements four primary workflows inside the n8n automation workspace. These workflows decouple direct application server overhead from integration API limits and AI generation pipelines.
+
+![n8n Workflows](./n8n_workflows.png)
+
+#### Flow 1: Email Ingestion & Database Sync
+This background execution synchronizes, cleans, and stores email updates to Supabase:
+- **Gmail Trigger**: Configured to run every minute to verify the existence of new incoming email messages.
+- **Data Sanitizer & Scraper**: Custom Javascript nodes strip HTML clutter, quotes, and legal signatures, counting raw word counts.
+- **Backup Logger**: Records incoming thread details to a central Google Sheet for analytical backups.
+- **NVIDIA NIM Embedding**: Sends the sanitized content to the `nv-embedqa-e5-v5` NIM model, producing 1024-dimension vector embeddings.
+- **Gemini LLM Summary**: Generates a single-sentence executive summary and assigns a category tag (e.g. Work, Finance, Newsletter).
+- **Supabase Upsert/Insert**: Persists the processed threads and message logs to the SQL tables, complete with embeddings and metadata.
+
+#### Flow 2: AI Chat Agent (RAG)
+Serves as the reasoning engine to answer search queries directly from your email context:
+- **Webhook Trigger**: Listens for user queries sent by the React frontend dashboard via Express.
+- **Agent Manager**: Orchestrates semantic query search routines.
+- **OpenAI LLM & Memory**: Maintains chat history buffer memory to keep context across subsequent user follow-ups.
+- **Supabase Vector Store Tool**: Takes user inputs, vectorizes them via NVIDIA NIM, and runs a cosine distance vector lookup to retrieve the top $K$ relevant emails.
+- **Response Dispatcher**: Sends the resulting cited response back to the client interface.
+
+#### Flow 3: Compose New Email
+Enables instant email drafting from short instructions:
+- **Webhook Trigger**: Listens for compose parameters (Recipient and Prompt instructions) from the frontend dashboard.
+- **OpenAI Email Draft Model**: Generates a professional business email structure based on the prompt instructions.
+- **JavaScript Separator**: Splices the LLM response text into structured `Subject` and `Body` segments.
+- **Gmail Send Node**: Signs into your Gmail account, passes parameters, and sends the drafted email.
+- **Success Callback**: Resolves the webhook and triggers UI notification updates.
+
+#### Flow 4: Thread-Aware Reply
+Generates contextual, conversation-aware email replies:
+- **Webhook Trigger**: Receives reply instructions alongside the source email's unique `Message-ID`.
+- **Gmail Message Fetcher**: Retrieves the original sender's email body context.
+- **OpenAI Draft Model**: Merges the original email context and the user's reply prompt to write a natural, thread-aware message.
+- **Gmail Send Reply**: Dispatches the reply, keeping the message nested under the correct historical email thread.
+- **Response Webhook**: Returns a success confirmation to the user dashboard.
+
 ---
 
 ## 2. Database Schema Design
