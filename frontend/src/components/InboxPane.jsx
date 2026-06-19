@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RefreshCw, Search, Sparkles, User } from 'lucide-react';
+import { cleanEmailContent } from '../utils/text';
 
 export default function InboxPane({ 
   threads, 
@@ -172,12 +173,12 @@ export default function InboxPane({
 
               {/* Subject */}
               <h3 className="text-sm font-extrabold text-slate-900 mb-1 truncate line-clamp-1">
-                {thread.subject}
+                {cleanEmailContent(thread.subject)}
               </h3>
 
               {/* Snippet */}
               <p className="text-xs text-slate-500 font-medium line-clamp-2 mb-3 leading-relaxed">
-                {thread.snippet}
+                {cleanEmailContent(thread.snippet)}
               </p>
 
               {/* Tag + AI Summary wrapper */}
@@ -198,7 +199,7 @@ export default function InboxPane({
                         Quick Summary
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed font-sans font-medium">
-                        {thread.summary}
+                        {cleanEmailContent(thread.summary)}
                       </p>
                     </div>
                   </div>

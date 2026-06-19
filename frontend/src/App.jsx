@@ -4,6 +4,7 @@ import InboxPane from './components/InboxPane';
 import ChatPane from './components/ChatPane';
 import api from './utils/api';
 import axios from 'axios';
+import { cleanEmailContent } from './utils/text';
 
 import { Mail, Calendar, Sparkles, X, Send, Loader2, CornerUpLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
@@ -358,7 +359,7 @@ export default function App() {
                   {selectedThread.category} Thread
                 </span>
                 <h3 className="font-display font-extrabold text-lg text-slate-900 mt-2 leading-snug">
-                  {selectedThread.subject}
+                  {cleanEmailContent(selectedThread.subject)}
                 </h3>
               </div>
               <button 
@@ -379,7 +380,7 @@ export default function App() {
                     AI Summary
                   </h4>
                   <p className="text-sm text-slate-700 leading-relaxed font-sans font-medium">
-                    {selectedThread.summary}
+                    {cleanEmailContent(selectedThread.summary)}
                   </p>
                 </div>
               </div>
@@ -392,14 +393,14 @@ export default function App() {
                 {selectedThread.messages.map((msg, i) => (
                   <div key={i} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-sm">
                     {/* Message Header */}
-                    <div className="flex justify-between items-center border-b border-slate-200 pb-2.5 mb-3.5 text-xs">
-                      <div>
-                        <span className="text-slate-800 font-bold block">{msg.sender}</span>
-                        <span className="text-[9px] text-slate-400 block mt-0.5 font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-2.5 mb-3.5 text-xs">
+                      <div className="min-w-0 w-full sm:max-w-[70%]">
+                        <span className="text-slate-800 font-bold block break-words">{msg.sender}</span>
+                        <span className="text-[9px] text-slate-400 block mt-0.5 font-medium break-all">
                           ID: {msg.id}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
                         <span className="text-[10px] text-slate-400 font-bold">
                           {new Date(msg.date).toLocaleString()}
                         </span>
@@ -414,8 +415,8 @@ export default function App() {
                     </div>
 
                     {/* Message content body */}
-                    <p className="text-xs text-slate-750 whitespace-pre-wrap leading-relaxed bg-white p-4 rounded-xl border border-slate-200/60 shadow-inner">
-                      {msg.body}
+                    <p className="text-xs text-slate-750 whitespace-pre-wrap break-words overflow-x-hidden leading-relaxed bg-white p-4 rounded-xl border border-slate-200/60 shadow-inner">
+                      {cleanEmailContent(msg.body)}
                     </p>
                   </div>
                 ))}
