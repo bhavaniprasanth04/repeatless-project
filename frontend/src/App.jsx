@@ -39,6 +39,9 @@ export default function App() {
   // Toast notification states
   const [notification, setNotification] = useState(null);
 
+  // Mobile UI States
+  const [isMobileInboxOpen, setIsMobileInboxOpen] = useState(false);
+
   // Check auth status on load and if redirected from callback
   useEffect(() => {
     const checkAuth = async () => {
@@ -284,12 +287,13 @@ export default function App() {
         onLogout={handleLogout}
         syncStats={syncStats}
         onSync={handleSyncEmails}
+        onToggleInbox={() => setIsMobileInboxOpen(!isMobileInboxOpen)}
       />
 
       {/* Main Workspace Layout */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Pane: Inbox Browser */}
-        <section className="w-full md:w-[450px] shrink-0 border-r border-slate-800/80 flex flex-col h-full">
+        {/* Left Pane: Inbox Browser (Hidden on mobile, side pane on desktop) */}
+        <section className="hidden md:flex w-full md:w-[450px] shrink-0 border-r border-slate-200/80 flex-col h-full bg-slate-50/20">
           <InboxPane 
             threads={threads}
             selectedThreadId={selectedThread?.id}
@@ -301,7 +305,7 @@ export default function App() {
           />
         </section>
 
-        {/* Right Pane: AI Conversational RAG */}
+        {/* Right Pane: AI Conversational Chat Assistant (Fills page) */}
         <section className="flex-1 h-full flex flex-col">
           <ChatPane 
             messages={messages}
@@ -311,6 +315,37 @@ export default function App() {
           />
         </section>
       </main>
+
+      {/* Mobile Inbox Drawer Overlay */}
+      {isMobileInboxOpen && (
+        <div className="fixed inset-0 z-40 flex md:hidden">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/20 backdrop-blur-xs transition-opacity duration-300 animate-fade-in pointer-events-auto"
+            onClick={() => setIsMobileInboxOpen(false)}
+          />
+          {/* Drawer Panel content */}
+          <div className="relative flex w-full max-w-xs flex-col bg-white h-full border-r border-slate-200 shadow-2xl animate-slide-right z-50 pointer-events-auto">
+            <div className="flex-1 overflow-hidden">
+              <InboxPane 
+                threads={threads}
+                selectedThreadId={selectedThread?.id}
+                onSelectThread={(thread) => {
+                  setSelectedThread(thread);
+                  setIsMobileInboxOpen(false); // auto-close drawer on select
+                }}
+                onSync={handleSyncEmails}
+                isSyncing={isSyncing}
+                isAuthenticated={authStatus.authenticated}
+                onComposeClick={() => {
+                  handleOpenCompose();
+                  setIsMobileInboxOpen(false); // auto-close drawer on compose
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Thread details Modal Popup */}
       {selectedThread && (
